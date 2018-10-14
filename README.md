@@ -98,6 +98,12 @@ run the command below. The jar file will be located in:
 mvn package
 ```
 
+## Screenshot
+
+When accessing <http://localhost:8080> you should see something like this:
+
+![Screenshot](Screenshot.png)
+
 ## Questions and problems
 
 Feel free to post any issue here on GitHub issues.
