@@ -44,7 +44,7 @@ You need the following dependencies to run this project:
 and the following npm packages installed globally:
 
 ```
-sudo npm install -g @vue/cli vue-template-compiler
+sudo npm install -g @vue/cli
 ```
 
 ## Running
