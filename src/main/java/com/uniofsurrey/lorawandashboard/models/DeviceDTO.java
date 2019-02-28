@@ -10,6 +10,8 @@ public class DeviceDTO {
 
     private String region;
 
+    private String pairedDevice;
+
     public String getDeviceName() {
         return deviceName;
     }
@@ -40,5 +42,13 @@ public class DeviceDTO {
 
     public void setRegion(String region) {
         this.region = region;
+    }
+
+    public String getPairedDevice() {
+        return pairedDevice;
+    }
+
+    public void setPairedDevice(String pairedDevice) {
+        this.pairedDevice = pairedDevice;
     }
 }

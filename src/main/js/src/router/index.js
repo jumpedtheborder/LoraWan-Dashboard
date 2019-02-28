@@ -8,6 +8,7 @@ import Register from '../views/Register.vue'
 import RegisterDevice from '../views/RegisterDevice.vue'
 import CandidateConsists from '../views/CandidateConsists.vue'
 import CalculatedConsists from '../views/CalculatedConsists.vue'
+import DeleteDevice from '../views/DeleteDevice.vue'
 
 Vue.use(Router)
 
@@ -44,14 +45,21 @@ export default new Router({
       component: RegisterDevice
     },
     {
-      path: '/candidateConsists',
-      name: 'CandidateConsists',
-      component: CandidateConsists
+      path: '/deleteDevice',
+      name: 'DeleteDevice',
+      component: DeleteDevice
     },
     {
-      path: '/calculatedConsists',
+      path: '/device/:deviceId/candidateConsists',
+      name: 'CandidateConsists',
+      component: CandidateConsists,
+      props: true
+    },
+    {
+      path: '/device/:deviceId/calculatedConsists',
       name: 'CalculatedConsists',
-      component: CalculatedConsists
+      component: CalculatedConsists,
+      props: true
     }
   ]
 })

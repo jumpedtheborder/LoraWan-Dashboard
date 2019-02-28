@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.time.ZonedDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -44,7 +46,40 @@ public class ReportController {
             }
         }
 
-
         return mostRecentReports;
+    }
+
+    @GetMapping("/rest/problemDevices")
+    public List<ReportDTO> getProblemDeviceReports() {
+        List<Report> allReports = reportRepository.findAllByOrderByDateTimeDesc();
+        List<ReportDTO> problemDeviceReports = new ArrayList<>();
+        for (int i = 0; i < allReports.size(); i++) {
+            Report report = allReports.get(i);
+            long timeDifference = ChronoUnit.MINUTES.between(report.getDateTime(), ZonedDateTime.now());
+            if (report.getBatteryLevel() < 30 || timeDifference > 60) {
+                ReportDTO reportDTO = new ReportDTO();
+                reportDTO.setId(report.getDevice().getId());
+                reportDTO.setBatteryLevel(report.getBatteryLevel());
+                reportDTO.setDeviceName(report.getDevice().getDeviceName());
+                reportDTO.setLatitude(report.getDevice().getLatitude());
+                reportDTO.setLongitude(report.getDevice().getLongitude());
+                if (problemDeviceReports.size() == 0) {
+                    problemDeviceReports.add(reportDTO);
+                }
+                boolean doesExist = false;
+                for (int j = 0; j < problemDeviceReports.size(); j++) {
+
+                    ReportDTO reportDTOAdded = problemDeviceReports.get(j);
+                    if (reportDTOAdded.getDeviceName() == reportDTO.getDeviceName()) {
+                        doesExist = true;
+                    }
+                }
+                if (doesExist == false) {
+                    problemDeviceReports.add(reportDTO);
+                }
+            }
+        }
+
+        return problemDeviceReports;
     }
 }

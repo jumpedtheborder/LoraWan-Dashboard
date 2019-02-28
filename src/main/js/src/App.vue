@@ -7,7 +7,7 @@
       app
     >
       <div v-if="user">
-      <v-list v-for="item in lowBatteryLevels" dense>
+      <v-list v-for="item in problemDevices" dense>
         <v-list-tile @click="handleRoute(item.deviceName)">
           <v-list-tile-content>
             <v-list-tile-title>Device Name: {{item.deviceName}}</v-list-tile-title>
@@ -31,8 +31,8 @@
             <v-list-tile v-if="user.admin == true" @click="$router.push('/createuser')">
               <v-list-tile-title>Add a user</v-list-tile-title>
             </v-list-tile>
-            <v-list-tile @click="$router.push('/myregion')">
-              <v-list-tile-title>Change my region</v-list-tile-title>
+            <v-list-tile @click="$router.push('/deleteDevice')">
+              <v-list-tile-title>Delete a device</v-list-tile-title>
             </v-list-tile>
             <v-list-tile @click="handleLogout()">
               <v-list-tile-title>Logout</v-list-tile-title>
@@ -61,7 +61,7 @@
                 drawer: true,
                 markers: [],
                 topBatteryReports: [],
-                lowBatteryLevels: []
+                problemDevices: []
 
             }
         },
@@ -91,7 +91,7 @@
                 }).catch(() => {
                     // void
                 }).finally(() => {
-                    this.user = null
+                 this.user = null
                 global.user = null
                 this.$router.push('/')
             })
@@ -106,19 +106,17 @@
                 if (this.user) {
                     axios.get('/rest/topBatteryReports').then((response) => {
                         this.topBatteryReports = response.data;
-                    }).then(this.findLowBatteryLevels).catch(err => {
+                    }).then(this.findProblemDevices).catch(err => {
 
                     })
                 }
                 },
-            findLowBatteryLevels() {
-              for (var i = 0; i < this.topBatteryReports.length; i++) {
-                  var currentBatteryReport = this.topBatteryReports[i];
-                  console.log(currentBatteryReport.batteryLevel);
-                  if (currentBatteryReport.batteryLevel < 30) {
-                      this.lowBatteryLevels.push(currentBatteryReport);
-                  }
-              }
+            findProblemDevices() {
+                if (this.user) {
+                    axios.get('/rest/problemDevices').then((response) => {
+                        this.problemDevices = response.data
+                    }).catch()
+                }
             }
         },
         mounted: function () {

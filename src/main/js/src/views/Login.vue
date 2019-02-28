@@ -82,7 +82,7 @@ export default {
       if (this.message) this.message = ''
     },
     checkIfLoggedIn() {
-        if (this.user) {
+        if (this.user.length > 0) {
             this.$router.push('/map')
         }
     },

@@ -1,10 +1,9 @@
 <template>
     <div id="full_div">
         <div style="height: 20%; overflow: auto; margin-left: 20px; margin-top: 20px;">
-            <h3>Simple map</h3>
-            <p>First marker is placed at {{ withPopup.lat }}, {{ withPopup.lng }}</p>
-            <p> Center is at {{ currentCenter }} and the zoom is: {{ currentZoom }} </p>
-            <button @click="showLongText">Toggle long popup</button>
+            <h3>Map of devices</h3>
+            <button @click="toggleHidden">Toggle problem devices only</button>
+            <button @click="toggleTooltip">Toggle tooltip display</button>
         </div>
         <l-map
                 :zoom="zoom"
@@ -19,13 +18,25 @@
                     :attribution="attribution"
             />
             <l-marker
+                    v-if="!hidden"
                     v-for="marker in markers"
                     :key="marker.id"
                     :lat-lng="convertLatLngToArray(marker)"
-                    @click="alert(marker)">
-                <l-tooltip :options="{permanent: true, interactive: true}">
+                    @click="routeToCandidateConsists(marker.id)">
+                <l-tooltip :options="{permanent: enableTooltip}">
                     <p>Device: {{marker.deviceName}}</p>
                     <p>Current Battery Level: {{getBatteryLevelsForDevice(marker)}}%</p>
+                </l-tooltip>
+            </l-marker>
+            <l-marker
+                    v-if="hidden"
+                    v-for="problem in problemDevices"
+                    :key="problem.id"
+                    :lat-lng="convertLatLngToArray(problem)"
+                    @click="routeToCandidateConsists(problem.id)">
+                <l-tooltip :options="{permanent: enableTooltip}">
+                    <p>Device: {{problem.deviceName}}</p>
+                    <p>Current Battery Level: {{getBatteryLevelsForDevice(problem)}}%</p>
                 </l-tooltip>
             </l-marker>
             <l-tile-layer
@@ -37,7 +48,7 @@
 </template>
 
 <script>
-    import { LMap, LTileLayer, LMarker, LPopup, LTooltip } from 'vue2-leaflet';
+    import { LMap, LTileLayer, LMarker, LPopup, LTooltip, LIcon } from 'vue2-leaflet';
     import { L } from 'vue2-leaflet';
     import axios from 'axios';
     delete L.Icon.Default.prototype._getIconUrl;
@@ -57,7 +68,8 @@
             LTileLayer,
             LMarker,
             LPopup,
-            LTooltip
+            LTooltip,
+            LIcon
         },
         data() {
             return {
@@ -73,9 +85,13 @@
                 mapOptions: {
                     zoomSnap: 0.5
                 },
+                problemDevices: [],
+                hidden: false,
                 enableTooltip: true,
                 markers: [],
-                topBatteryReports: []
+                topBatteryReports: [],
+                stuff: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"c8d63e89945d3b07","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:26.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"},
+                stuff2: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"0de5b209945d3b07","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:27.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"}
             };
         },
         methods: {
@@ -85,11 +101,11 @@
             centerUpdate(center) {
                 this.currentCenter = center;
             },
-            showLongText() {
-                this.showParagraph = !this.showParagraph;
+            toggleHidden() {
+              this.hidden = !this.hidden
             },
-            innerClick() {
-                alert('Click!');
+            toggleTooltip() {
+              this.enableTooltip = !this.enableTooltip
             },
             getAllDevices() {
                 axios.get('/rest/devices').then((response) => {
@@ -109,6 +125,11 @@
 
                 })
             },
+            findProblemDevices() {
+                axios.get('/rest/problemDevices').then((response) => {
+                    this.problemDevices = response.data
+                }).catch()
+            },
             getBatteryLevelsForDevice(marker) {
                 for (var i = 0; i < this.topBatteryReports.length; i++) {
                     var currentBatteryReport = this.topBatteryReports[i];
@@ -117,15 +138,29 @@
                         myMarker = currentBatteryReport.batteryLevel;
                     }
                 }
-
                 return myMarker;
+            },
+            routeToCandidateConsists(id) {
+                this.$router.push(`/device/${id}/candidateConsists`)
+            },
+            testWebhooks1() {
+                axios.post("/webhook", {
+                    webhookJson: this.stuff
+                })
+            },
+            testWebhooks2() {
+                axios.post("/webhook", {
+                    webhookJson: this.stuff2
+                })
             }
-
         },
 
         mounted() {
             this.getAllDevices();
             this.findMostRecentBatteryLevel();
+            this.findProblemDevices();
+            //this.testWebhooks1();
+            //this.testWebhooks2();
         }
     }
 </script>

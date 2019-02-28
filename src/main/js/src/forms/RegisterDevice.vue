@@ -13,6 +13,8 @@
             <v-text-field type="number" label="Latitude of device" v-model.number="markers.position.lat" placeholder="Latitude" :rules="latitudeRules" readonly></v-text-field>
             <v-text-field type="number" label="Longitude of device" v-model.number="markers.position.lng" placeholder="Longitude" :rules="longitudeRules" readonly></v-text-field>
             <v-text-field type="text" label="Device region" v-model="device.region" placeholder="Region" :rules="regionRules"></v-text-field>
+            <p>Please select a marker that is red on the below map. If there is currently no paired device registered, please ensure that the below text box is blank.</p>
+            <v-text-field type="text" label="Paired Device" v-model="device.pairedDevice" placeholder="Paired Device"></v-text-field>
           </v-flex>
         </v-layout>
         <div :v-if="!!message" class="red--text">
@@ -64,11 +66,19 @@
           <l-popup :content="markers.tooltip" />
           <l-tooltip :content="markers.tooltip" />
         </l-marker>
-<!--        <l-geo-json
-                :geojson="geojson"
-                :options="options"
-                :options-style="styleFunction"
-        />-->
+        <l-marker
+                v-for="marker in nonPairedMakers"
+                :key="marker.id"
+                :lat-lng="convertLatLngToArray(marker)"
+                @click="updatePairedDevice(marker)">
+                <l-icon icon-url="/images/Red_Icon.png" />
+          <l-tooltip :options="{permanent: true, interactive: true}">
+            <p>Device: {{marker.deviceName}}</p>
+          </l-tooltip>
+        </l-marker>
+
+
+
       </l-map>
     </div>
   </v-card>
@@ -77,7 +87,7 @@
 
 <script>
 import axios from 'axios'
-import { LMap, LTileLayer, LMarker, LLayerGroup, LTooltip, LPopup, LControlZoom, LControlAttribution, LControlScale, LControlLayers, LGeoJson } from 'vue2-leaflet';
+import { LMap, LTileLayer, LMarker, LLayerGroup, LTooltip, LPopup, LControlZoom, LControlAttribution, LControlScale, LControlLayers, LGeoJson, LIcon } from 'vue2-leaflet';
 import myJSON from '../assets/GBR_adm2.json';
 
 
@@ -103,7 +113,8 @@ export default {
         LControlAttribution,
         LControlScale,
         LControlLayers,
-        LGeoJson
+        LGeoJson,
+        LIcon
     },
   data() {
     return {
@@ -124,6 +135,7 @@ export default {
         tileProviders: tileProviders,
         bounds: L.latLngBounds({ 'lat': 51.476483373501964, 'lng': -0.14668464136775586 }, { 'lat': 51.52948330894063, 'lng': -0.019140238291583955 }),
         message: '',
+        nonPairedMakers: [],
         markers: {
             id: 'm1',
             position: {lat: 51.505, lng: -0.09},
@@ -135,7 +147,8 @@ export default {
           deviceID: '',
           latitude: '',
           longitude: '',
-          region: ''
+          region: '',
+          pairedDevice: ''
         },
         enableTooltip: true,
       geojson: myJSON,
@@ -187,9 +200,6 @@ export default {
         }
     },
   methods: {
-        submit () {
-
-        },
       insidePolygon(point, vs) {
           // ray-casting algorithm based on
           // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
@@ -249,22 +259,43 @@ export default {
               }
           }
       },
+      updatePairedDevice(device) {
+            this.device.pairedDevice = device.deviceName
+      },
+      convertLatLngToArray(marker) {
+          var array = {lng: marker.longitude, lat: marker.latitude}
+
+          return array;
+      },
+      getNonPairedDevices() {
+            axios.get("/rest/nonPairedDevices").then((response) => {
+                this.nonPairedMakers = response.data
+            }).catch(err => {
+
+            })
+      },
     submit() {
       if (this.$refs.form.validate()) {
           axios.post("/rest/device", {
               deviceName: this.device.deviceID,
               latitude: this.markers.position.lat,
               longitude: this.markers.position.lng,
-              region: this.device.region
+              region: this.device.region,
+              pairedDevice: this.device.pairedDevice
           }).catch(err => {
           this.message = err.response.data && err.response.data.message ? 'Error: ' + err.response.data.message : err.message
-        })
+        }).finally(() => {
+              this.$router.push('/map')
+          })
       }
     },
     clear() {
       this.$refs.form.reset()
       this.message = ''
     }
-  }
+  },
+    mounted() {
+        this.getNonPairedDevices();
+    }
 }
 </script>
