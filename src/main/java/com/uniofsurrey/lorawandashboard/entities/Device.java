@@ -1,6 +1,7 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
 import javax.persistence.*;
+import java.security.acl.Group;
 import java.util.List;
 
 @Entity
@@ -20,6 +21,10 @@ public class Device {
     @OneToOne
     private Region region;
 
+    @ManyToOne
+    private Grouping grouping;
+
+    private int groupOrder;
 
     public Long getId() {
         return id;
@@ -59,5 +64,21 @@ public class Device {
 
     public void setRegion(Region region) {
         this.region = region;
+    }
+
+    public Grouping getGrouping() {
+        return grouping;
+    }
+
+    public void setGrouping(Grouping grouping) {
+        this.grouping = grouping;
+    }
+
+    public int getGroupOrder() {
+        return groupOrder;
+    }
+
+    public void setGroupOrder(int groupOrder) {
+        this.groupOrder = groupOrder;
     }
 }

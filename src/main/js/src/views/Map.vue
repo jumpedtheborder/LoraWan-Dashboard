@@ -23,18 +23,19 @@
                     :key="marker.id"
                     :lat-lng="convertLatLngToArray(marker)"
                     @click="routeToCandidateConsists(marker.id)">
-                <l-tooltip :options="{permanent: enableTooltip}">
+                <l-tooltip v-if="enableTooltip" :options="{permanent: enableTooltip}">
                     <p>Device: {{marker.deviceName}}</p>
                     <p>Current Battery Level: {{getBatteryLevelsForDevice(marker)}}%</p>
                 </l-tooltip>
             </l-marker>
             <l-marker
-                    v-if="hidden"
-                    v-for="problem in problemDevices"
-                    :key="problem.id"
-                    :lat-lng="convertLatLngToArray(problem)"
-                    @click="routeToCandidateConsists(problem.id)">
-                <l-tooltip :options="{permanent: enableTooltip}">
+                v-if="hidden"
+                v-for="problem in problemDevices"
+                :key="problem.id"
+                :lat-lng="convertLatLngToArray(problem)"
+                @click="routeToCandidateConsists(problem.id)">
+                <l-icon icon-url="/images/Red_Icon.png" />
+                <l-tooltip v-if="enableTooltip" :options="{permanent: true}">
                     <p>Device: {{problem.deviceName}}</p>
                     <p>Current Battery Level: {{getBatteryLevelsForDevice(problem)}}%</p>
                 </l-tooltip>

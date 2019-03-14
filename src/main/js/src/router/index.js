@@ -9,6 +9,8 @@ import RegisterDevice from '../views/RegisterDevice.vue'
 import CandidateConsists from '../views/CandidateConsists.vue'
 import CalculatedConsists from '../views/CalculatedConsists.vue'
 import DeleteDevice from '../views/DeleteDevice.vue'
+import CreateGroup from '../views/CreateGrouping.vue'
+import RegisterDeviceLocation from '../views/RegisterDeviceLocation.vue'
 
 Vue.use(Router)
 
@@ -43,6 +45,17 @@ export default new Router({
       path: '/registerDevice',
       name: 'RegisterDevice',
       component: RegisterDevice
+    },
+    {
+      path: '/registerDeviceLocation',
+      name: 'RegisterDeviceLocation',
+      component: RegisterDeviceLocation,
+      props: true
+    },
+    {
+      path: '/createGroup',
+      name: 'CreateGroup',
+      component: CreateGroup
     },
     {
       path: '/deleteDevice',

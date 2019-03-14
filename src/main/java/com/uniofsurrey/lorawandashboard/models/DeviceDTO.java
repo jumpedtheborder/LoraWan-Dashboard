@@ -10,7 +10,9 @@ public class DeviceDTO {
 
     private String region;
 
-    private String pairedDevice;
+    private String group;
+
+    private int groupOrder;
 
     public String getDeviceName() {
         return deviceName;
@@ -44,11 +46,19 @@ public class DeviceDTO {
         this.region = region;
     }
 
-    public String getPairedDevice() {
-        return pairedDevice;
+    public String getGroup() {
+        return group;
     }
 
-    public void setPairedDevice(String pairedDevice) {
-        this.pairedDevice = pairedDevice;
+    public void setGroup(String group) {
+        this.group = group;
+    }
+
+    public int getGroupOrder() {
+        return groupOrder;
+    }
+
+    public void setGroupOrder(int groupOrder) {
+        this.groupOrder = groupOrder;
     }
 }

@@ -25,10 +25,13 @@
         <v-menu v-if="user" offset-y>
           <v-btn slot="activator" flat><v-icon medium class="mr-1">person</v-icon>My Account</v-btn>
           <v-list>
+            <v-list-tile @click="$router.push('/createGroup')">
+              <v-list-tile-title>Create a Group</v-list-tile-title>
+            </v-list-tile>
             <v-list-tile @click="$router.push('/registerdevice')">
               <v-list-tile-title>Create a device</v-list-tile-title>
             </v-list-tile>
-            <v-list-tile v-if="user.admin == true" @click="$router.push('/createuser')">
+            <v-list-tile v-if="user.admin == true" @click="$router.push('/register')">
               <v-list-tile-title>Add a user</v-list-tile-title>
             </v-list-tile>
             <v-list-tile @click="$router.push('/deleteDevice')">

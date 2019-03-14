@@ -1,11 +1,13 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
-import javax.persistence.*;
-import java.time.LocalDateTime;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.time.ZonedDateTime;
 
 @Entity
-public class Webhook {
+public class PendingDeviceWebhook {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)

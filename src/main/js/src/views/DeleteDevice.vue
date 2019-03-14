@@ -7,7 +7,7 @@
             <v-form ref="form">
                 <v-layout row wrap>
                     <v-flex xs12 md6>
-                        <p>By deleting a device, all webhooks, battery reports, pairings and the device itself shall be deleted. Please ensure you select the correct device before proceeding</p>
+                        <p>By deleting a device, all webhooks, battery reports and the device itself shall be deleted. Please ensure you select the correct device before proceeding</p>
                         <v-select v-model="deviceName" :items="devices" label="Devices to delete"></v-select>
                     </v-flex>
                 </v-layout>

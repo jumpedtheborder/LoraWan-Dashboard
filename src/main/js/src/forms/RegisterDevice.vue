@@ -4,17 +4,15 @@
       <h3 class="headline mb-0">Create a new device</h3>
     </v-card-title>
     <v-card-text>
+      <div :v-if="!!message" class="red--text">
+        <p>{{message}}</p>
+      </div>
       <v-form v-model="valid" ref="form">
         <v-layout row wrap>
           <v-flex xs12 md6>
             <p>Credentials:</p>
             <v-text-field type="text" label="Device ID" v-model="device.deviceID" placeholder="Device ID" :rules="deviceRules"></v-text-field>
-            <p>These will be automatically updated upon positioning the device on the below map</p>
-            <v-text-field type="number" label="Latitude of device" v-model.number="markers.position.lat" placeholder="Latitude" :rules="latitudeRules" readonly></v-text-field>
-            <v-text-field type="number" label="Longitude of device" v-model.number="markers.position.lng" placeholder="Longitude" :rules="longitudeRules" readonly></v-text-field>
-            <v-text-field type="text" label="Device region" v-model="device.region" placeholder="Region" :rules="regionRules"></v-text-field>
-            <p>Please select a marker that is red on the below map. If there is currently no paired device registered, please ensure that the below text box is blank.</p>
-            <v-text-field type="text" label="Paired Device" v-model="device.pairedDevice" placeholder="Paired Device"></v-text-field>
+            <v-select v-model="device.group" :items="groups" label="Available Groups"></v-select>
           </v-flex>
         </v-layout>
         <div :v-if="!!message" class="red--text">
@@ -25,62 +23,8 @@
     <v-card-actions>
       <v-spacer></v-spacer>
       <v-btn flat @click="clear">Close</v-btn>
-      <v-btn color="primary" @click="submit">Submit</v-btn>
+      <v-btn color="primary" @click="next">Next</v-btn>
     </v-card-actions>
-    <div>
-      <l-map
-              :zoom.sync="zoom"
-              :options="mapOptions"
-              :center="center"
-              :bounds="bounds"
-              :min-zoom="minZoom"
-              :max-zoom="maxZoom"
-              style="height: 45%; position: absolute;">
-        <l-control-layers
-                :position="layersPosition"
-                :collapsed="false"
-                :sort-layers="true"
-        />
-        <l-tile-layer
-                v-for="tileProvider in tileProviders"
-                :key="tileProvider.name"
-                :name="tileProvider.name"
-                :visible="tileProvider.visible"
-                :url="tileProvider.url"
-                :attribution="tileProvider.attribution"
-                :token="token"
-                layer-type="base"/>
-        <l-control-zoom :position="zoomPosition" />
-        <l-control-attribution
-                :position="attributionPosition"
-                :prefix="attributionPrefix" />
-        <l-control-scale :imperial="imperial" />
-        <l-marker
-                :key="markers.id"
-                :visible="markers.visible"
-                :draggable="markers.draggable"
-                :lat-lng.sync="markers.position"
-                :icon="markers.icon"
-                @click="alert(markers)"
-                @dragend="updateDeviceRegion(markers.position)">
-          <l-popup :content="markers.tooltip" />
-          <l-tooltip :content="markers.tooltip" />
-        </l-marker>
-        <l-marker
-                v-for="marker in nonPairedMakers"
-                :key="marker.id"
-                :lat-lng="convertLatLngToArray(marker)"
-                @click="updatePairedDevice(marker)">
-                <l-icon icon-url="/images/Red_Icon.png" />
-          <l-tooltip :options="{permanent: true, interactive: true}">
-            <p>Device: {{marker.deviceName}}</p>
-          </l-tooltip>
-        </l-marker>
-
-
-
-      </l-map>
-    </div>
   </v-card>
 
 </template>
@@ -135,7 +79,7 @@ export default {
         tileProviders: tileProviders,
         bounds: L.latLngBounds({ 'lat': 51.476483373501964, 'lng': -0.14668464136775586 }, { 'lat': 51.52948330894063, 'lng': -0.019140238291583955 }),
         message: '',
-        nonPairedMakers: [],
+        groups: [],
         markers: {
             id: 'm1',
             position: {lat: 51.505, lng: -0.09},
@@ -148,7 +92,7 @@ export default {
           latitude: '',
           longitude: '',
           region: '',
-          pairedDevice: ''
+          group: ''
         },
         enableTooltip: true,
       geojson: myJSON,
@@ -200,93 +144,14 @@ export default {
         }
     },
   methods: {
-      insidePolygon(point, vs) {
-          // ray-casting algorithm based on
-          // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
-
-          var x = point[0], y = point[1];
-
-          var inside = false;
-          for (var i = 0, j = vs.length - 1; i < vs.length; j = i++) {
-              var xi = vs[i][0], yi = vs[i][1];
-              var xj = vs[j][0], yj = vs[j][1];
-
-              var intersect = ((yi > y) != (yj > y))
-                  && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-              if (intersect) inside = !inside;
-          }
-
-          return inside;
+      populateAvailableGroupings() {
+        axios.get("/rest/groupings").then(response => {
+            this.groups = response.data
+        }).catch()
       },
-      insideMultiPolygon(point, vs) {
-          // ray-casting algorithm based on
-          // http://www.ecse.rpi.edu/Homepages/wrf/Research/Short_Notes/pnpoly.html
-
-          var x = point[0], y = point[1];
-
-          var inside = false;
-
-          for(var a = 0; a < vs.length; a++) {
-              var test = vs[a][0];
-              for (var i = 0, j = test.length - 1; i < test.length; j = i++) {
-                  var xi = test[i][0], yi = test[i][1];
-                  var xj = test[j][0], yj = test[j][1];
-
-                  var intersect = ((yi > y) != (yj > y))
-                      && (x < (xj - xi) * (y - yi) / (yj - yi) + xi);
-                  if (intersect) inside = !inside;
-              }
-          }
-
-          return inside;
-      },
-      updateDeviceRegion(lnglat) {
-
-          for (var i = 0; i < this.geojson.features.length; i++) {
-              var currentGeoJson = this.geojson.features[i];
-              var currentLngLat = [lnglat.lng, lnglat.lat];
-              if (currentGeoJson.geometry.type.toString() == "Polygon") {
-                  var isTrue = this.insidePolygon(currentLngLat, currentGeoJson.geometry.coordinates[0]);
-                  if(isTrue == true) {
-                      this.device.region = currentGeoJson.properties.NAME_2;
-                  }
-              }
-              else {
-                  var isTrue = this.insideMultiPolygon(currentLngLat, currentGeoJson.geometry.coordinates);
-                  if(isTrue == true) {
-                      this.device.region = currentGeoJson.properties.NAME_2;
-                  }
-              }
-          }
-      },
-      updatePairedDevice(device) {
-            this.device.pairedDevice = device.deviceName
-      },
-      convertLatLngToArray(marker) {
-          var array = {lng: marker.longitude, lat: marker.latitude}
-
-          return array;
-      },
-      getNonPairedDevices() {
-            axios.get("/rest/nonPairedDevices").then((response) => {
-                this.nonPairedMakers = response.data
-            }).catch(err => {
-
-            })
-      },
-    submit() {
+    next() {
       if (this.$refs.form.validate()) {
-          axios.post("/rest/device", {
-              deviceName: this.device.deviceID,
-              latitude: this.markers.position.lat,
-              longitude: this.markers.position.lng,
-              region: this.device.region,
-              pairedDevice: this.device.pairedDevice
-          }).catch(err => {
-          this.message = err.response.data && err.response.data.message ? 'Error: ' + err.response.data.message : err.message
-        }).finally(() => {
-              this.$router.push('/map')
-          })
+          this.$router.push({name: 'RegisterDeviceLocation', params: {deviceName: this.device.deviceID, deviceGroup: this.device.group}})
       }
     },
     clear() {
@@ -295,7 +160,7 @@ export default {
     }
   },
     mounted() {
-        this.getNonPairedDevices();
+        this.populateAvailableGroupings();
     }
 }
 </script>
