@@ -14,6 +14,8 @@ import com.uniofsurrey.lorawandashboard.repositories.PendingDeviceWebhookReposit
 import com.uniofsurrey.lorawandashboard.repositories.UnregisteredDeviceWebhookRepository;
 import org.apache.tomcat.util.codec.binary.Base64;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.LocalDateTime;
@@ -25,6 +27,7 @@ import java.util.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+@EnableScheduling
 @RestController
 public class WebhookController {
     private WebhookRepository webhookRepository;
@@ -49,14 +52,14 @@ public class WebhookController {
         logger.info(webhookJson);
         JsonParser parser = new JsonParser();
         JsonObject rootObject = parser.parse(webhookJson).getAsJsonObject();
-        //JsonObject nextObject = rootObject.getAsJsonObject("webhookJson");
+        JsonObject nextObject = rootObject.getAsJsonObject("webhookJson");
         //Change to nextObject for debugging test
-        String payload = rootObject.getAsJsonPrimitive("data").getAsString();
+        String payload = nextObject.getAsJsonPrimitive("data").getAsString();
 
         byte[] bytes = Base64.decodeBase64(payload);
 
         //Change to nextObject for debugging test
-        JsonArray rxInfo = rootObject.getAsJsonArray("rxInfo");
+        JsonArray rxInfo = nextObject.getAsJsonArray("rxInfo");
         String datetime = "";
         for (JsonElement element : rxInfo) {
             datetime = element.getAsJsonObject().getAsJsonPrimitive("time").getAsString();
@@ -73,48 +76,60 @@ public class WebhookController {
         StringBuilder builder = new StringBuilder();
         int counter = 0;
         for (byte b : consist_bytes) {
-            if(counter == 3) {
+            if (counter == 3) {
                 builder.append(",");
             }
-            builder.append(String.format("%02X",b));
+            builder.append(String.format("%02X", b));
             counter += 1;
         }
 
-        Device device = deviceRepository.findByDeviceName(rootObject.getAsJsonPrimitive("applicationID").getAsString());
+        //Replace rootObject with nextObject for internal webhook
+        Device device = deviceRepository.findByDeviceName(nextObject.getAsJsonPrimitive("devEUI").getAsString());
 
         if (device == null) {
+            logger.info("device doesn't exist, saving to unregistered devices webhook collection");
             //Store device consists temporarily until device has been registered
             UnregisteredDeviceWebhook unregisteredDeviceWebhook = new UnregisteredDeviceWebhook();
-            unregisteredDeviceWebhook.setAppId(rootObject.getAsJsonPrimitive("applicationID").getAsString());
-            unregisteredDeviceWebhook.setDevId(rootObject.getAsJsonPrimitive("devEUI").getAsString());
+            //Replace rootObject with nextObject for internal webhook
+            unregisteredDeviceWebhook.setAppId(nextObject.getAsJsonPrimitive("applicationID").getAsString());
+            unregisteredDeviceWebhook.setDevId(nextObject.getAsJsonPrimitive("devEUI").getAsString());
             unregisteredDeviceWebhook.setCandidateConsist(builder.toString());
             unregisteredDeviceWebhook.setDateTime(zonedDateTime);
             unregisteredDeviceWebhookRepository.save(unregisteredDeviceWebhook);
-        }
-
-        else {
+        } else {
+            logger.info("device exists, saving to pending devices webhook collection");
             //Save to table if the device exists and awaiting processing
             PendingDeviceWebhook pending = new PendingDeviceWebhook();
-            pending.setAppId(rootObject.getAsJsonPrimitive("applicationID").getAsString());
-            pending.setDevId(rootObject.getAsJsonPrimitive("devEUI").getAsString());
+            //Replace rootObject with nextObject for internal webhook
+            pending.setAppId(nextObject.getAsJsonPrimitive("applicationID").getAsString());
+            pending.setDevId(nextObject.getAsJsonPrimitive("devEUI").getAsString());
             pending.setCandidateConsist(builder.toString());
             pending.setDateTime(zonedDateTime);
             pendingDeviceWebhookRepository.save(pending);
         }
     }
 
+    @Scheduled(fixedDelay = 15000)
     public void retrieveAllWebhooks() {
+        logger.info("Starting to retrieve pending webhooks");
+        //Get all groups
         Iterable<Grouping> allGroups = groupingRepository.findAll();
         for (Grouping grouping : allGroups) {
+            //Find all devices within a group
             List<Device> devicesByGrouping = deviceRepository.findAllByGrouping(grouping);
             List<PendingDeviceWebhook> allPendingWebhooks = new ArrayList<>();
             for (int i = 0; i < devicesByGrouping.size(); i++) {
+                //Find all pending webhooks for that given device, and add it to the allpendingWebhooks list
                 List<PendingDeviceWebhook> pendingDeviceWebhooks = pendingDeviceWebhookRepository.findAllByDevId(devicesByGrouping.get(i).getDeviceName());
                 for (int j = 0; j < pendingDeviceWebhooks.size(); j++) {
-                    allPendingWebhooks.add(pendingDeviceWebhooks.get(i));
+                    allPendingWebhooks.add(pendingDeviceWebhooks.get(j));
                 }
             }
-            validateConsist(allPendingWebhooks);
+            if (allPendingWebhooks.size() > 1) {
+                validateConsist(allPendingWebhooks);
+            } else {
+                logger.info("No pending webhooks to process");
+            }
         }
     }
 
@@ -124,8 +139,8 @@ public class WebhookController {
 
         for (PendingDeviceWebhook pendingDeviceWebhook : allPendingWebhooks) {
             LocalDateTime currentPendingTime = pendingDeviceWebhook.getDateTime().toLocalDateTime();
-            //Must wait one minute before processing begins
-            if (ChronoUnit.MINUTES.between(currentPendingTime, localDateTime) < 1) {
+            //Must wait 15 seconds before processing begins, as there may be more webhooks that may still be sent
+            if (ChronoUnit.SECONDS.between(currentPendingTime, localDateTime) < 15) {
                 validTime = false;
             }
         }
@@ -134,34 +149,39 @@ public class WebhookController {
             Map<String, Integer> directionMap = new HashMap<>();
             List<PendingDeviceWebhook> devicesToMove = new ArrayList<>();
 
+            //Iterate through all pending webhooks associated with that group
             for (int i = 0; i < allPendingWebhooks.size(); i++) {
                 PendingDeviceWebhook currentWebhook = allPendingWebhooks.get(i);
+                //Convert ZonedDateTime to LocalDateTime for comparison between times
                 LocalDateTime localDateTimeForCurrentWebhook = currentWebhook.getDateTime().toLocalDateTime();
-                for (int j = i + 1; j < allPendingWebhooks.size(); i++) {
+                //Iterate against every other value in the list with an index above itself, but avoids repeats i.e. 1 -> 3 then 3 -> 1
+                for (int j = i + 1; j < allPendingWebhooks.size(); j++) {
                     PendingDeviceWebhook comparisonWebhook = allPendingWebhooks.get(j);
-
                     LocalDateTime localDateTimeForComparisonWebhook = comparisonWebhook.getDateTime().toLocalDateTime();
-                    if (ChronoUnit.MINUTES.between(localDateTimeForCurrentWebhook, localDateTimeForComparisonWebhook) <= 1) {
+                    logger.info("Comparing " + currentWebhook.getDevId() + " to " + comparisonWebhook.getDevId());
+                    //15 seconds is a reasonable time in which a webhook should be associated with another
+                    if (ChronoUnit.SECONDS.between(localDateTimeForCurrentWebhook, localDateTimeForComparisonWebhook) <= 15) {
+                        logger.info("Devices have timestamp within acceptable range, adding to list");
                         if (devicesToMove.contains(currentWebhook) == false) {
                             devicesToMove.add(currentWebhook);
                         }
                         if (devicesToMove.contains(comparisonWebhook) == false) {
                             devicesToMove.add(comparisonWebhook);
                         }
-                        String correctConsist = getCorrectConsist(currentWebhook, comparisonWebhook);
-                        String correctDirection = getCorrectDirection(currentWebhook, comparisonWebhook);
-                        if (consistMap.containsKey(correctConsist)) {
-                            consistMap.put(correctConsist, consistMap.get(correctConsist) + 1);
-                        }
-                        else {
-                            consistMap.put(correctConsist, 1);
-                        }
+                        if (devicesToMove.size() > 1) {
+                            String correctConsist = getCorrectConsist(currentWebhook, comparisonWebhook);
+                            String correctDirection = getCorrectDirection(currentWebhook, comparisonWebhook);
+                            if (consistMap.containsKey(correctConsist)) {
+                                consistMap.put(correctConsist, consistMap.get(correctConsist) + 1);
+                            } else {
+                                consistMap.put(correctConsist, 1);
+                            }
 
-                        if (directionMap.containsKey(correctDirection)) {
-                            directionMap.put(correctDirection, directionMap.get(correctDirection) + 1);
-                        }
-                        else {
-                            directionMap.put(correctDirection, 1);
+                            if (directionMap.containsKey(correctDirection)) {
+                                directionMap.put(correctDirection, directionMap.get(correctDirection) + 1);
+                            } else {
+                                directionMap.put(correctDirection, 1);
+                            }
                         }
                     }
                 }
@@ -185,6 +205,9 @@ public class WebhookController {
                     frequencyDirection = entry.getValue();
                 }
             }
+            logger.info("Vote has passed, direction suggested is: " + elementDirection);
+            logger.info("Vote has passed, consist suggested is: " + elementConsist);
+
 
             for (PendingDeviceWebhook pending : allPendingWebhooks) {
                 Webhook webhook = new Webhook();
@@ -281,10 +304,25 @@ public class WebhookController {
         Device device2 = deviceRepository.findByDeviceName(pending2.getDevId());
         String direction;
 
-        if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
+        if (device1.getGroupOrder() > device2.getGroupOrder()) {
+            Device temp1 = device1;
+            Device temp2 = device2;
+            device1 = temp2;
+            device2 = temp1;
+        }
+
+        if (pending1.getDateTime().toLocalDateTime().isBefore(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
+            direction = "E/W";
+        }
+
+        else if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
             direction = "E/W";
         }
         else if (pending1.getDateTime().toLocalDateTime().isBefore(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
+            direction = "W/E";
+        }
+
+        else if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
             direction = "W/E";
         }
         else {

@@ -92,7 +92,8 @@
                 markers: [],
                 topBatteryReports: [],
                 stuff: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"c8d63e89945d3b07","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:26.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"},
-                stuff2: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"0de5b209945d3b07","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:27.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"}
+                stuff2: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"0de5b209945d3b07","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:27.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"},
+                stuff3: {"applicationID":"1","applicationName":"test-app","deviceName":"com2","devEUI":"testDevice","rxInfo":[{"gatewayID":"66efb7b9945d3b07","name":"lopy4","time":"2019-02-13T18:15:25.279285Z","rssi":-50,"loRaSNR":7,"location":{"latitude":0,"longitude":0,"altitude":0}}],"txInfo":{"frequency":868100000,"dr":5},"adr":false,"fCnt":7,"fPort":2,"data":"AAV53XdJ"}
             };
         },
         methods: {
@@ -153,6 +154,11 @@
                 axios.post("/webhook", {
                     webhookJson: this.stuff2
                 })
+            },
+            testWebhooks3() {
+                axios.post("/webhook", {
+                    webhookJson: this.stuff3
+                })
             }
         },
 
@@ -160,8 +166,9 @@
             this.getAllDevices();
             this.findMostRecentBatteryLevel();
             this.findProblemDevices();
-            //this.testWebhooks1();
-            //this.testWebhooks2();
+            this.testWebhooks1();
+            this.testWebhooks2();
+            this.testWebhooks3();
         }
     }
 </script>
