@@ -1,7 +1,8 @@
 <template v-if="calculatedConsists.length > 0">
-    <div style="position: absolute; left: 50%;">
+    <div>
         <v-btn color="normal" @click="routeToCandidateConsists">Click here to view candidate consists</v-btn>
-        <h3>Calculated Consists from {{calculatedConsists[0].deviceName}}</h3>
+        <h3 v-if="calculatedConsists.length == 0">There are no calculated consists available. This means that the device has not received a consist, or a consist has yet to be calculated</h3>
+        <h3 v-else>Calculated Consists from {{calculatedConsists[0].deviceName}}</h3>
         <table>
             <thead>
             <tr bgcolor="#80ffd4">
@@ -37,7 +38,7 @@
         },
         methods: {
             getCandidateConsists() {
-                axios.get(`/rest/webhook/consist/${this.deviceId}`).then(response => {
+                axios.get(`/rest/webhook/calculatedConsist/${this.deviceId}`).then(response => {
                     this.calculatedConsists = response.data
                 }).catch()
             },

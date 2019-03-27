@@ -11,6 +11,7 @@ import CalculatedConsists from '../views/CalculatedConsists.vue'
 import DeleteDevice from '../views/DeleteDevice.vue'
 import CreateGroup from '../views/CreateGrouping.vue'
 import RegisterDeviceLocation from '../views/RegisterDeviceLocation.vue'
+import DeviceStatus from '../views/DeviceStatus.vue'
 
 Vue.use(Router)
 
@@ -45,6 +46,12 @@ export default new Router({
       path: '/registerDevice',
       name: 'RegisterDevice',
       component: RegisterDevice
+    },
+    {
+      path: '/deviceStatus/:deviceId',
+      name: 'DeviceStatus',
+      component: DeviceStatus,
+      props: true
     },
     {
       path: '/registerDeviceLocation',

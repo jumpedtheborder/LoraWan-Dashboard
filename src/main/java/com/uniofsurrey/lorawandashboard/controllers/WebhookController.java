@@ -555,8 +555,8 @@ public class WebhookController {
     }
 */
 
-    @GetMapping("/rest/webhook/consist/{deviceId}")
-    public List<DeviceConsistDTO> getWebhooksById(@PathVariable Long deviceId) {
+    @GetMapping("/rest/webhook/calculatedConsist/{deviceId}")
+    public List<DeviceConsistDTO> getCalculatedWebhooksById(@PathVariable Long deviceId) {
 
         Device device = deviceRepository.findById(deviceId).orElseThrow(() -> new RuntimeException ("not found"));
 
@@ -573,6 +573,29 @@ public class WebhookController {
             currentDeviceDto.setDirection(webhook.getDirection());
             currentDeviceDto.setFormattedTime(webhook.getDateTime().format(formatter));
             deviceConsistDtos.add(currentDeviceDto);
+        }
+
+        return deviceConsistDtos;
+    }
+
+    @GetMapping("/rest/webhook/candidateConsist/{deviceId}")
+    public List<DeviceConsistDTO> getCandidateWebhooksById(@PathVariable Long deviceId) {
+
+        Device device = deviceRepository.findById(deviceId).orElseThrow(() -> new RuntimeException ("not found"));
+
+        List<PendingDeviceWebhook> webhooks = pendingDeviceWebhookRepository.findAllByDevId(device.getDeviceName());
+
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
+
+        List<DeviceConsistDTO> deviceConsistDtos = new ArrayList<>();
+
+        for (PendingDeviceWebhook pending : webhooks) {
+            DeviceConsistDTO currentCandidateDeviceDto = new DeviceConsistDTO();
+            currentCandidateDeviceDto.setDeviceName(pending.getDevId());
+            currentCandidateDeviceDto.setCandidateConsist(pending.getCandidateConsist());
+            currentCandidateDeviceDto.setDirection(pending.getDirection());
+            currentCandidateDeviceDto.setFormattedTime(pending.getDateTime().format(formatter));
+            deviceConsistDtos.add(currentCandidateDeviceDto);
         }
 
         return deviceConsistDtos;

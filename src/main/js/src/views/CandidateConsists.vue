@@ -1,21 +1,24 @@
 <template v-if="candidateConsists.length > 0">
-    <div style="position: absolute; left: 50%;">
+    <div>
         <v-btn color="normal" @click="routeToCalculatedConsists">Click here to view calculated consists</v-btn>
-        <h3>Candidate Consists from {{candidateConsists[0].deviceName}}</h3>
-        <table>
-            <thead>
-            <tr bgcolor="#80ffd4">
-                <th>Time</th>
-                <th>Candidate consist</th>
-            </tr>
-            </thead>
-            <tbody>
+        <h3 v-if="candidateConsists.length == 0">There are no candidate consists available. This means that the device has not received a consist, or it has already been calculated</h3>
+        <div v-else>
+            <h3>Candidate Consists from {{candidateConsists[0].deviceName}}</h3>
+            <table>
+                <thead>
+                <tr bgcolor="#80ffd4">
+                    <th>Time</th>
+                    <th>Candidate consist</th>
+                </tr>
+                </thead>
+                <tbody>
                 <tr v-for="candidate in candidateConsists">
                     <td>{{candidate.formattedTime}}</td>
                     <td class="color">{{candidate.candidateConsist}}</td>
                 </tr>
-            </tbody>
-        </table>
+                </tbody>
+            </table>
+        </div>
     </div>
 </template>
 
@@ -35,7 +38,7 @@
         },
         methods: {
             getCandidateConsists() {
-                axios.get(`/rest/webhook/consist/${this.deviceId}`).then(response => {
+                axios.get(`/rest/webhook/candidateConsist/${this.deviceId}`).then(response => {
                     this.candidateConsists = response.data
                 }).catch()
             },

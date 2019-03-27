@@ -2,8 +2,8 @@
     <div id="full_div">
         <div style="height: 20%; overflow: auto; margin-left: 20px; margin-top: 20px;">
             <h3>Map of devices</h3>
-            <button @click="toggleHidden">Toggle problem devices only</button>
-            <button @click="toggleTooltip">Toggle tooltip display</button>
+            <v-btn color="normal"  @click="toggleHidden">Toggle problem devices only</v-btn>
+            <v-btn color="normal"  @click="toggleTooltip">Toggle tooltip display</v-btn>
         </div>
         <l-map
                 :zoom="zoom"
@@ -22,7 +22,7 @@
                     v-for="marker in markers"
                     :key="marker.id"
                     :lat-lng="convertLatLngToArray(marker)"
-                    @click="routeToCandidateConsists(marker.id)">
+                    @click="routeToDeviceStatus(marker.id)">
                 <l-tooltip v-if="enableTooltip" :options="{permanent: enableTooltip}">
                     <p>Device: {{marker.deviceName}}</p>
                     <p>Current Battery Level: {{getBatteryLevelsForDevice(marker)}}%</p>
@@ -33,7 +33,7 @@
                 v-for="problem in problemDevices"
                 :key="problem.id"
                 :lat-lng="convertLatLngToArray(problem)"
-                @click="routeToCandidateConsists(problem.id)">
+                @click="routeToDeviceStatus(problem.id)">
                 <l-icon icon-url="/images/Red_Icon.png" />
                 <l-tooltip v-if="enableTooltip" :options="{permanent: true}">
                     <p>Device: {{problem.deviceName}}</p>
@@ -142,8 +142,8 @@
                 }
                 return myMarker;
             },
-            routeToCandidateConsists(id) {
-                this.$router.push(`/device/${id}/candidateConsists`)
+            routeToDeviceStatus(id) {
+                this.$router.push(`/deviceStatus/${id}`)
             },
             testWebhooks1() {
                 axios.post("/webhook", {

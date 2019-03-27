@@ -1,4 +1,4 @@
-# Spring + Vue Sample Project
+# LoRaWAN Dashboard Application
 
 ## What is this?
 
@@ -11,6 +11,14 @@ This is the most basic and complete functional sample project using:
 * [Maven](https://maven.apache.org/) for Java configuration
 * [npm](https://www.npmjs.com/) for the frontend dependency handling
 
+This project is an application that allows an authenticated user to create groups, devices, user accounts
+and display these devices upon a map. The application has the ability to receive webhooks as 
+a HTTP POST request, processing both train consists and current battery level of a device. 
+Using this technology, a user may be able to view all consists for that given device, as well
+as the device status, alongside being able to toggle between those devices which are considered
+"problem devices".
+
+# Original Template
 The purpose of this sample project is to plug together all of the
 technologies listed above together. This project only serves a sample
 static page with two routes (via Vue Router) on which the `Home` view
@@ -22,11 +30,8 @@ Any changes in the frontend src folder will be automatically
 recognised by the spring (see below how to run it). No need to recompile
 entire Java backend, simply refresh the web browser.
 
-## Why another Spring sample project?
-
-I could not find a single project that had the Sping with Vue
-(vue-cli 3.x) configured properly, including autoreloading. So I
-have crated a one.
+##Credits
+Credits go to Matus Novak for providing a template with the above description
 
 ## TODO
 
@@ -54,19 +59,19 @@ to install local dependencies to build Vue.js.
 This needs to be done only once!
 
 ```bash
-cd spring-vue-sample-project/src/main/js
+cd lorawan_dashboard/src/main/js
 npm install
 ```
 
 Then simply run the following command below. Please note that
 running the command below will automatically start the spring
 application and the web server will be served at:
-<http://localhost:8080>. Also, this also builds the front end
+<http://localhost:8081>. Also, this also builds the front end
 automatically! you can skip the frontend build by adding:
 `-DskipNpm=true` at the end of the `mvn` command.
 
 ```bash
-cd spring-vue-sample-project/
+cd lorawan_dashboard/
 mvn spring-boot:run
 # Press Ctrl+C to stop the server gracefully
 ```
@@ -98,20 +103,9 @@ run the command below. The jar file will be located in:
 mvn package
 ```
 
-## Screenshot
-
-When accessing <http://localhost:8080> you should see something like this:
-
-![Screenshot](Screenshot.png)
-
-## Questions and problems
-
-Feel free to post any issue here on GitHub issues.
-
-## Contributing
-
-Pull request are welcome!
-
-## License
-
-The MIT License
+#To access the application'
+There is a login system that requires a username and password to access the application.
+For first time use for developers/testers, a default account is created with the following
+credentials
+* Username: admin@admin.com
+* Password: admin

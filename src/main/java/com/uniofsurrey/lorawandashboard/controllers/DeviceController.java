@@ -4,6 +4,7 @@ import com.uniofsurrey.lorawandashboard.config.AuthenticatedUser;
 import com.uniofsurrey.lorawandashboard.entities.*;
 import com.uniofsurrey.lorawandashboard.exceptions.BadRequestException;
 import com.uniofsurrey.lorawandashboard.models.DeviceDTO;
+import com.uniofsurrey.lorawandashboard.models.DeviceStatusDTO;
 import com.uniofsurrey.lorawandashboard.repositories.*;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -15,7 +16,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 
 import javax.validation.Valid;
 import java.lang.Iterable;
-import java.security.acl.Group;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -134,5 +134,21 @@ public class DeviceController {
         else {
             throw new BadRequestException("This group is already in use");
         }
+    }
+
+    @GetMapping("/rest/device/status/{deviceId}")
+    public DeviceStatusDTO getDeviceStatus(@PathVariable long deviceId) {
+        Device device = deviceRepository.findById(deviceId).orElseThrow(() -> new RuntimeException ("not found"));
+        Report report = reportRepository.findFirstByDeviceOrderByDateTimeDesc(device);
+        DeviceStatusDTO status = new DeviceStatusDTO();
+        status.setDeviceName(device.getDeviceName());
+        status.setBatteryLevel(report.getBatteryLevel());
+        status.setGroup(device.getGrouping().getGroupName());
+        status.setGroupOrder(device.getGroupOrder());
+        status.setLatitude(device.getLatitude());
+        status.setLongitude(device.getLongitude());
+        status.setRegion(device.getRegion().getRegionName());
+
+        return status;
     }
 }
