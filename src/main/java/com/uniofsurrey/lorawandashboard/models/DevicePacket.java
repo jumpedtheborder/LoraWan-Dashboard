@@ -1,7 +1,5 @@
 package com.uniofsurrey.lorawandashboard.models;
 
-import java.util.List;
-
 public class DevicePacket {
     private String applicationID;
     private String applicationName;

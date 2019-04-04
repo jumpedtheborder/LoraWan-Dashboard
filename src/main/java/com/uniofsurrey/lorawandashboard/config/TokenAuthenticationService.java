@@ -2,7 +2,10 @@ package com.uniofsurrey.lorawandashboard.config;
 
 import com.uniofsurrey.lorawandashboard.entities.User;
 import com.uniofsurrey.lorawandashboard.repositories.UserRepository;
-import io.jsonwebtoken.*;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.SignatureAlgorithm;
+import io.jsonwebtoken.SignatureException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;

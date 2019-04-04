@@ -1,11 +1,13 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
-import javax.persistence.*;
-import java.time.LocalDateTime;
+import javax.persistence.Entity;
+import javax.persistence.GeneratedValue;
+import javax.persistence.GenerationType;
+import javax.persistence.Id;
 import java.time.ZonedDateTime;
 
 @Entity
-public class Webhook {
+public class Webhook implements Comparable<Webhook> {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -15,13 +17,15 @@ public class Webhook {
 
     private String devId;
 
-    private boolean flag;
-
     private ZonedDateTime dateTime;
 
     private String direction;
 
     private String candidateConsist;
+
+    private boolean flag;
+
+    private Long groupId;
 
     public Long getId() {
         return id;
@@ -47,14 +51,6 @@ public class Webhook {
         this.devId = devId;
     }
 
-    public boolean isFlag() {
-        return flag;
-    }
-
-    public void setFlag(boolean flag) {
-        this.flag = flag;
-    }
-
     public ZonedDateTime getDateTime() {
         return dateTime;
     }
@@ -78,4 +74,23 @@ public class Webhook {
     public void setCandidateConsist(String candidateConsist) {
         this.candidateConsist = candidateConsist;
     }
+
+    public boolean getFlag() { return flag; }
+
+    public void setFlag(boolean flag) { this.flag = flag; }
+
+    @Override
+    public int compareTo(Webhook target) {
+        // Sort descending.
+        if(target.dateTime.compareTo(this.dateTime) >  0 ){
+            return 1;
+        }
+        else if(target.dateTime.compareTo(this.dateTime) <  0){
+            return -1;
+        }
+        else{
+            return 0;
+        }
+    }
+
 }

@@ -7,5 +7,5 @@ import java.util.List;
 
 public interface WebhookRepository extends CrudRepository<Webhook, Long> {
     List<Webhook> findByDevId(String id);
-    List<Webhook> findByDevIdAndFlagFalseOrderByDateTimeDesc(String id);
+    List<Webhook> findByDevIdAndFlagIsFalse(String id);
 }

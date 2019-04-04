@@ -1,39 +1,42 @@
 package com.uniofsurrey.lorawandashboard.controllers;
 
-import com.google.gson.*;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
+import com.google.gson.JsonObject;
+import com.google.gson.JsonParser;
 import com.uniofsurrey.lorawandashboard.entities.Device;
-import com.uniofsurrey.lorawandashboard.entities.Pairing;
+import com.uniofsurrey.lorawandashboard.entities.Grouping;
 import com.uniofsurrey.lorawandashboard.entities.Webhook;
 import com.uniofsurrey.lorawandashboard.models.DeviceConsistDTO;
-import com.uniofsurrey.lorawandashboard.repositories.DeviceRepository;
-import com.uniofsurrey.lorawandashboard.repositories.PairingRepository;
-import com.uniofsurrey.lorawandashboard.repositories.WebhookRepository;
+import com.uniofsurrey.lorawandashboard.repositories.*;
 import org.apache.tomcat.util.codec.binary.Base64;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.web.bind.annotation.*;
-
-import java.time.LocalDateTime;
-import java.time.ZonedDateTime;
-import java.time.format.DateTimeFormatter;
-import java.time.temporal.ChronoUnit;
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.scheduling.annotation.EnableScheduling;
+import org.springframework.web.bind.annotation.*;
 
+import java.time.ZonedDateTime;
+import java.time.format.DateTimeFormatter;
+import java.util.*;
+
+@EnableScheduling
 @RestController
 public class WebhookController {
     private WebhookRepository webhookRepository;
-    private PairingRepository pairingRepository;
+    private GroupingRepository groupingRepository;
     private DeviceRepository deviceRepository;
+    private UnregisteredDeviceWebhookRepository unregisteredDeviceWebhookRepository;
+    private PendingDeviceWebhookRepository pendingDeviceWebhookRepository;
     private Logger logger = LoggerFactory.getLogger(this.getClass());
 
     @Autowired
-    public WebhookController(WebhookRepository webhookRepository, PairingRepository pairingRepository, DeviceRepository deviceRepository) {
+    public WebhookController(WebhookRepository webhookRepository, GroupingRepository groupingRepository, DeviceRepository deviceRepository, UnregisteredDeviceWebhookRepository unregisteredDeviceWebhookRepository, PendingDeviceWebhookRepository pendingDeviceWebhookRepository) {
         this.webhookRepository = webhookRepository;
-        this.pairingRepository = pairingRepository;
+        this.groupingRepository = groupingRepository;
         this.deviceRepository = deviceRepository;
+        this.unregisteredDeviceWebhookRepository = unregisteredDeviceWebhookRepository;
+        this.pendingDeviceWebhookRepository = pendingDeviceWebhookRepository;
     }
 
     @PostMapping("/webhook")
@@ -66,10 +69,10 @@ public class WebhookController {
         StringBuilder builder = new StringBuilder();
         int counter = 0;
         for (byte b : consist_bytes) {
-            if(counter == 3) {
+            if (counter == 3) {
                 builder.append(",");
             }
-            builder.append(String.format("%02X",b));
+            builder.append(String.format("%02X", b));
             counter += 1;
         }
 
@@ -83,179 +86,163 @@ public class WebhookController {
         webhook1.setFlag(false);
         webhookRepository.save(webhook1);
 
-        Device currentDevice = deviceRepository.findByDeviceName(webhook1.getDevId());
+        //Replace rootObject with nextObject for internal webhook
+        Device device = deviceRepository.findByDeviceName(nextObject.getAsJsonPrimitive("devEUI").getAsString());
 
-        if (currentDevice.getId() != null) {
-            validatePairing(currentDevice, webhook1);
+        if (device != null) {
+            validateWebhook(device);
+        } else {
+            logger.info("device is null");
+        }
+    }
+
+
+    //get all webhooks
+    public List<Webhook> getAllWebhooksOrderTimeDesc(Device currentDevice){
+        Grouping deviceGroup = groupingRepository.findByGroupName(currentDevice.getGrouping().getGroupName());
+        List<Device> devicesInGroup = deviceRepository.findAllByGrouping(deviceGroup);
+        logger.info("Devices in a group: " + devicesInGroup.toString());
+        List<Webhook> allWebhooksFromDevicesInGroup = new ArrayList<>();
+        for (Device device : devicesInGroup) {
+            List<Webhook> webhooksFromDevice = webhookRepository.findByDevIdAndFlagIsFalse(device.getDeviceName());
+            allWebhooksFromDevicesInGroup.addAll(webhooksFromDevice);
+        }
+        logger.info("all webhooks from group: " + allWebhooksFromDevicesInGroup);
+        if (!allWebhooksFromDevicesInGroup.isEmpty()){
+            Collections.sort(allWebhooksFromDevicesInGroup);
+            logger.info("All webhooks from device" + allWebhooksFromDevicesInGroup);
+        }
+
+        return allWebhooksFromDevicesInGroup;
+    }
+
+
+    //Divide webhooks into segments
+    public List<List<Webhook>> segmentedWebhooks(List<Webhook> webhooks, Device currentDevice){
+        Grouping deviceGroup = groupingRepository.findByGroupName(currentDevice.getGrouping().getGroupName());
+        int numberDevicesInGroup = deviceRepository.findAllByGrouping(deviceGroup).size();
+        List<List<Webhook>> webhookArrayList = new ArrayList<>();
+        int numberOfArrays;
+        if ( webhooks.size() % numberDevicesInGroup > 0){
+            numberOfArrays  = ((webhooks.size() / numberDevicesInGroup) +  1 );
         }
         else {
-            logger.info("The device " + webhook1.getDevId() + " has not been registered");
+            numberOfArrays  = (webhooks.size() / numberDevicesInGroup);
+        }
+
+        logger.info("Number of arrays:" + numberOfArrays);
+
+        int count = 0;
+        int index = 0;
+
+        while (count < numberOfArrays) {
+            logger.info("segementation of webhooks");
+            List<Webhook> sectionedWebhooks = new ArrayList<>();
+            logger.info("before webhook array segementation loop");
+            while (index < webhooks.size()){
+                logger.info("DEVID: " + webhooks.get(index).getDevId());
+                sectionedWebhooks.add(webhooks.get(index));
+                index++;
+            }
+            webhookArrayList.add(sectionedWebhooks);
+            count++;
+        }
+        logger.info("after loop; separated webhook arrays: " + webhookArrayList);
+
+        return  webhookArrayList;
+    }
+
+    //validate consist
+    public void calculateConsists(List<Webhook> sectionedWebhook){
+        Map<String, Integer> frequencyMap = new HashMap<>();
+        for( Webhook hook : sectionedWebhook) {
+            Integer frequency = frequencyMap.get(hook.getCandidateConsist());
+            frequencyMap.put(hook.getCandidateConsist(), frequency == null ? 1 : frequency + 1);
+        }
+
+        String maxFrequency = GetMostFrequentValueFrom(frequencyMap);
+        logger.info("most frequent consist:" + maxFrequency);
+
+        for(Webhook hook: sectionedWebhook) {
+            hook.setCandidateConsist(maxFrequency);
+            webhookRepository.save(hook);
+        }
+    }
+
+    //validate direction
+    public void calculateDirection(List<Webhook> sectionedWebhook){
+        int index = 0;
+        int comparisonId = 1;
+
+        Map<String, Integer> frequencyMap = new HashMap<>();
+        while(index < sectionedWebhook.size() - 1){
+            Webhook hook = sectionedWebhook.get(index);
+            if ((hook.getDateTime().isAfter(sectionedWebhook.get(comparisonId).getDateTime()))
+                    && (deviceRepository.findByDeviceName(hook.getDevId()).getGroupOrder() < deviceRepository.findByDeviceName(sectionedWebhook.get(comparisonId).getDevId()).getGroupOrder())) {
+                logger.info("if direction here!");
+                Integer frequency = frequencyMap.get("E/W");
+                frequencyMap.put("E/W", frequency == null ? 1 : frequency + 1);
+            } else if ((hook.getDateTime().isBefore(sectionedWebhook.get(comparisonId).getDateTime()))
+                    && (deviceRepository.findByDeviceName(hook.getDevId()).getGroupOrder() > deviceRepository.findByDeviceName(sectionedWebhook.get(comparisonId).getDevId()).getGroupOrder())) {
+                logger.info("else if direction here!");
+                Integer frequency = frequencyMap.get("W/E");
+                frequencyMap.put("W/E", frequency == null ? 1 : frequency + 1);
+            } else {
+                logger.info("else direction here!");
+                Integer frequency = frequencyMap.get("UNKNOWN");
+                frequencyMap.put("UNKNOWN", frequency == null ? 1 : frequency + 1);
+            }
+            if(comparisonId <= sectionedWebhook.size()){
+                comparisonId++;
+            }
+            index++;
+        }
+//        for ( Webhook hook : sectionedWebhook.) {
+//            if ((hook.getDateTime().isAfter(sectionedWebhook.get(comparisonId).getDateTime()))
+//                    && (deviceRepository.findByDeviceName(hook.getDevId()).getGroupOrder() > deviceRepository.findByDeviceName(sectionedWebhook.get(comparisonId).getDevId()).getGroupOrder())) {
+//                logger.info("if direction here!");
+//                Integer frequency = frequencyMap.get("E/W");
+//                frequencyMap.put("E/W", frequency == null ? 1 : frequency + 1);
+//            } else if ((hook.getDateTime().isBefore(sectionedWebhook.get(comparisonId).getDateTime()))
+//                    && (deviceRepository.findByDeviceName(hook.getDevId()).getGroupOrder() < deviceRepository.findByDeviceName(sectionedWebhook.get(comparisonId).getDevId()).getGroupOrder())) {
+//                logger.info("else if direction here!");
+//                Integer frequency = frequencyMap.get("W/E");
+//                frequencyMap.put("W/E", frequency == null ? 1 : frequency + 1);
+//            } else {
+//                logger.info("else direction here!");
+//                Integer frequency = frequencyMap.get("UNKNOWN");
+//                frequencyMap.put("UNKNOWN", frequency == null ? 1 : frequency + 1);
+//            }
+//            if(comparisonId <= sectionedWebhook.size()){
+//                comparisonId++;
+//            }
+//        }
+
+        String maxFrequency = GetMostFrequentValueFrom(frequencyMap);
+        logger.info("most frequent direction:" + maxFrequency);
+
+        for(Webhook hook: sectionedWebhook) {
+            hook.setDirection(maxFrequency);
+            hook.setFlag(true);
+            webhookRepository.save(hook);
         }
 
     }
 
-    public void validatePairing(Device currentWebhook, Webhook webhook1) {
-        Pairing pairing = pairingRepository.findByDevice1OrDevice2(currentWebhook, currentWebhook);
-        if (pairing != null) {
-            List<Webhook> webhookToCompare;
-            if (pairing.getDevice1() == currentWebhook) {
-                webhookToCompare = webhookRepository.findByDevIdAndFlagFalseOrderByDateTimeDesc(pairing.getDevice2().getDeviceName());
-            }
-            else {
-                webhookToCompare = webhookRepository.findByDevIdAndFlagFalseOrderByDateTimeDesc(pairing.getDevice1().getDeviceName());
-            }
+    public void validateWebhook(Device currentDevice){
+        logger.info("start vaildation");
+        List<Webhook> allWebhooks = getAllWebhooksOrderTimeDesc(currentDevice);
+        logger.info("all webhooks successful");
+        List<List<Webhook>> segmentedWebhooks = segmentedWebhooks(allWebhooks, currentDevice);
+        logger.info("segmented webhooks successful");
 
-            LocalDateTime localDateTimeForCurrentWebhook = webhook1.getDateTime().toLocalDateTime();
-
-            boolean valid = false;
-            LocalDateTime localDateTimeForComparisonWebhook;
-            Webhook webhook2 = new Webhook();
-            for (int i = 0; i < webhookToCompare.size(); i++) {
-                if (valid == false) {
-                    localDateTimeForComparisonWebhook = webhookToCompare.get(i).getDateTime().toLocalDateTime();
-                    if (ChronoUnit.MINUTES.between(localDateTimeForCurrentWebhook, localDateTimeForComparisonWebhook) <= 10) {
-                        webhook2 = webhookToCompare.get(i);
-                        valid = true;
-                    }
-                }
-            }
-            if (webhook2.getDevId() != null) {
-                validate(webhook1, webhook2);
-            }
-            else {
-                logger.info("No webhook found for pairing within 10 minutes of report");
-            }
+        int i = 0;
+        while (i < segmentedWebhooks.size()){
+            calculateConsists(segmentedWebhooks.get(i));
+            calculateDirection(segmentedWebhooks.get(i));
+            i++;
         }
-        else {
-            logger.info("There is not a pairing for this device, cannot continue");
-        }
-    }
-
-    public void validate(Webhook webhook1, Webhook webhook2) {
-        String[] webhook1Consist = webhook1.getCandidateConsist().split(",");
-        String[] webhook2Consist = webhook2.getCandidateConsist().split(",");
-        List<String> webhook1ConsistList = new ArrayList(Arrays.asList(webhook1Consist));
-        List<String> webhook2ConsistList = new ArrayList(Arrays.asList(webhook2Consist));
-        List<String> webhook1ConsistListCopy = new ArrayList<>();
-        List<String> webhook2ConsistListCopy = new ArrayList<>();
-        String overs;
-
-        if (webhook1Consist.length > webhook2Consist.length) {
-
-            for (String value : webhook1ConsistList) {
-                webhook1ConsistListCopy.add(value);
-            }
-
-            webhook2ConsistList.removeAll(webhook1ConsistList);
-            if (webhook2ConsistList.size() == 0) {
-                logger.info("webhook2 is valid, setting flags as true");
-
-                if (webhook1.getDateTime().toLocalDateTime().isAfter(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("E/W");
-                    webhook2.setDirection("E/W");
-                }
-                else if (webhook1.getDateTime().toLocalDateTime().isBefore(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("W/E");
-                    webhook2.setDirection("W/E");
-                }
-                else {
-                    webhook1.setDirection("UNKNOWN");
-                    webhook2.setDirection("UNKNOWN");
-                }
-
-                webhook1.setFlag(true);
-                webhook2.setFlag(true);
-
-                webhookRepository.save(webhook1);
-                webhookRepository.save(webhook2);
-
-                webhook1ConsistListCopy.removeAll(webhook2ConsistList);
-
-                overs = String.join(",", webhook1ConsistListCopy );
-
-                Webhook webhookNew = new Webhook();
-                webhookNew.setAppId(webhook1.getAppId());
-                webhookNew.setDevId(webhook1.getDevId());
-                webhookNew.setFlag(false);
-                webhookNew.setDateTime(webhook1.getDateTime());
-                webhookNew.setCandidateConsist(overs);
-                webhookRepository.save(webhookNew);
-                logger.info("New webhook record created!");
-
-
-            }
-        }
-
-        else if (webhook1Consist.length < webhook2Consist.length) {
-
-            for (String value : webhook2ConsistList) {
-                webhook2ConsistListCopy.add(value);
-            }
-
-            webhook1ConsistList.removeAll(webhook2ConsistList);
-            if (webhook1ConsistList.size() == 0) {
-                logger.info("webhook1 is valid, setting flags as true");
-
-                if (webhook1.getDateTime().toLocalDateTime().isAfter(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("E/W");
-                    webhook2.setDirection("E/W");
-                }
-                else if (webhook1.getDateTime().toLocalDateTime().isBefore(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("W/E");
-                    webhook2.setDirection("W/E");
-                }
-                else {
-                    webhook1.setDirection("UNKNOWN");
-                    webhook2.setDirection("UNKNOWN");
-                }
-
-                webhook1.setFlag(true);
-                webhook2.setFlag(true);
-
-                webhookRepository.save(webhook1);
-                webhookRepository.save(webhook2);
-
-                webhook2ConsistListCopy.removeAll(webhook1ConsistList);
-
-                overs = String.join(",", webhook2ConsistListCopy );
-
-                Webhook webhookNew = new Webhook();
-                webhookNew.setAppId(webhook2.getAppId());
-                webhookNew.setDevId(webhook2.getDevId());
-                webhookNew.setFlag(false);
-                webhookNew.setDateTime(webhook2.getDateTime());
-                webhookNew.setCandidateConsist(overs);
-                webhookRepository.save(webhookNew);
-                logger.info("New webhook record created!");
-            }
-        }
-
-        else if (webhook1Consist.length == webhook2Consist.length) {
-
-            webhook1ConsistList.removeAll(webhook2ConsistList);
-            if (webhook1ConsistList.size() == 0) {
-                logger.info("webhook1 and webhook2 is valid, setting flags as true");
-
-                if (webhook1.getDateTime().toLocalDateTime().isAfter(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("E/W");
-                    webhook2.setDirection("E/W");
-                }
-                else if (webhook1.getDateTime().toLocalDateTime().isBefore(webhook2.getDateTime().toLocalDateTime())) {
-                    webhook1.setDirection("W/E");
-                    webhook2.setDirection("W/E");
-                }
-                else {
-                    webhook1.setDirection("UNKNOWN");
-                    webhook2.setDirection("UNKNOWN");
-                }
-
-                webhook1.setFlag(true);
-                webhook2.setFlag(true);
-
-                webhookRepository.save(webhook1);
-                webhookRepository.save(webhook2);
-            }
-        }
+        logger.info("end of validation.");
     }
 
 
@@ -282,5 +269,15 @@ public class WebhookController {
         return deviceConsistDtos;
     }
 
+    private String GetMostFrequentValueFrom(Map<String,Integer> frequencyMap){
+        Map.Entry<String, Integer> maxFrequency = null;
+        for( Map.Entry<String, Integer> mapEntry : frequencyMap.entrySet()){
+            if(maxFrequency == null || mapEntry.getValue() > maxFrequency.getValue()) {
+                maxFrequency = mapEntry;
+            }
+        }
+
+        return maxFrequency.getKey();
+    }
 
 }

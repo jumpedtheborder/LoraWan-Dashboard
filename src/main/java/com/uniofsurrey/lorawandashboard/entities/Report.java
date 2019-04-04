@@ -1,7 +1,6 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
 import javax.persistence.*;
-import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
 @Entity

@@ -9,7 +9,6 @@ import com.uniofsurrey.lorawandashboard.models.UserDTO;
 import com.uniofsurrey.lorawandashboard.repositories.RegionRepository;
 import com.uniofsurrey.lorawandashboard.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.security.core.parameters.P;
 import org.springframework.web.bind.annotation.*;
 
 import javax.validation.Valid;
