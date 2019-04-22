@@ -304,25 +304,17 @@ public class WebhookController {
         Device device2 = deviceRepository.findByDeviceName(pending2.getDevId());
         String direction;
 
-        if (device1.getGroupOrder() > device2.getGroupOrder()) {
-            Device temp1 = device1;
-            Device temp2 = device2;
-            device1 = temp2;
-            device2 = temp1;
-        }
-
-        if (pending1.getDateTime().toLocalDateTime().isBefore(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
+        if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
             direction = "E/W";
         }
 
-        else if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
-            direction = "E/W";
-        }
         else if (pending1.getDateTime().toLocalDateTime().isBefore(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
             direction = "W/E";
         }
-
-        else if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() > device1.getGroupOrder()) {
+		else if (pending1.getDateTime().toLocalDateTime().isBefore(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() < device1.getGroupOrder()) {
+            direction = "E/W";
+        }
+		else if (pending1.getDateTime().toLocalDateTime().isAfter(pending2.getDateTime().toLocalDateTime()) && device2.getGroupOrder() < device1.getGroupOrder()) {
             direction = "W/E";
         }
         else {

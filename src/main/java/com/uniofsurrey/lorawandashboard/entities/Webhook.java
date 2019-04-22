@@ -1,6 +1,9 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
 import javax.persistence.*;
+import javax.validation.constraints.Max;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
@@ -11,14 +14,21 @@ public class Webhook {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
+    @Size(max = 50)
     private String appId;
 
+    @NotNull
+    @Size(max = 50)
     private String devId;
 
+    @NotNull
     private ZonedDateTime dateTime;
 
+    @NotNull
     private String direction;
 
+    @NotNull
     private String candidateConsist;
 
     public Long getId() {

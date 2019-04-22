@@ -1,6 +1,8 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Entity
 public class Grouping {
@@ -9,6 +11,8 @@ public class Grouping {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
+    @Size(max = 30)
     private String groupName;
 
     public Long getId() {

@@ -1,6 +1,7 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
 import javax.persistence.*;
+import javax.validation.constraints.NotNull;
 import java.time.LocalDateTime;
 import java.time.ZonedDateTime;
 
@@ -12,11 +13,14 @@ public class Report {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @NotNull
     private ZonedDateTime dateTime;
 
+    @NotNull
     private Float batteryLevel;
 
     @ManyToOne
+    @NotNull
     private Device device;
 
     public Long getId() {

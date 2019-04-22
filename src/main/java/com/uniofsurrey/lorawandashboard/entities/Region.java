@@ -1,9 +1,8 @@
 package com.uniofsurrey.lorawandashboard.entities;
 
-import com.sun.javafx.beans.IDProperty;
-
 import javax.persistence.*;
 import javax.validation.constraints.NotNull;
+import javax.validation.constraints.Size;
 
 @Entity
 @Table(name = "region")
@@ -14,6 +13,7 @@ public class Region {
     private Long id;
 
     @NotNull
+    @Size(max = 200)
     private String regionName;
 
     public Long getId() {

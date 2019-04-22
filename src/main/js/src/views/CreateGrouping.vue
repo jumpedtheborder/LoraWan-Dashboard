@@ -33,7 +33,7 @@
                 message: '',
                 groupRules: [
                     v => !!v || 'Group name is required',
-                    v => v && v.length <= 100 || 'Group name must be less than 30 characters'
+                    v => v && v.length < 30 || 'Group name must be less than 30 characters'
                 ]
             }
         },

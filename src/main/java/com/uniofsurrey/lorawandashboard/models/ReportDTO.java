@@ -1,5 +1,7 @@
 package com.uniofsurrey.lorawandashboard.models;
 
+import java.time.ZonedDateTime;
+
 public class ReportDTO {
 
     private Long id;
@@ -7,6 +9,7 @@ public class ReportDTO {
     private Float batteryLevel;
     private Float longitude;
     private Float latitude;
+    private String dateTime;
 
 
     public String getDeviceName() {
@@ -47,5 +50,13 @@ public class ReportDTO {
 
     public void setLatitude(Float latitude) {
         this.latitude = latitude;
+    }
+
+    public String getDateTime() {
+        return dateTime;
+    }
+
+    public void setDateTime(String dateTime) {
+        this.dateTime = dateTime;
     }
 }

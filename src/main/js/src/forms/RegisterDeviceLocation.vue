@@ -157,11 +157,11 @@
                 ],
                 latitudeRules: [
                     v => !!v || 'Latitude is required',
-                    v => v && v <= 85 && v >= -85 || 'Latitude must be less than 100 characters'
+                    v => v && v <= 90 && v >= -90 || 'Latitude must be between 90 and -90 inclusive'
                 ],
                 longitudeRules: [
                     v => !!v || 'Longitude is required',
-                    v => v && v <= 180 && v >= -180 || 'Longitude must be less than 100 characters'
+                    v => v && v <= 180 && v >= -180 || 'Longitude must be between 180 and -180 inclusive'
                 ],
                 regionRules: [
                     v => !!v || 'Region is required',

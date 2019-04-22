@@ -8,10 +8,10 @@
     >
       <div v-if="user">
       <v-list v-for="item in problemDevices" dense>
-        <v-list-tile @click="handleRoute(item.deviceName)">
+        <v-list-tile @click="handleRoute(item.id)">
           <v-list-tile-content>
             <v-list-tile-title>Device Name: {{item.deviceName}}</v-list-tile-title>
-            <v-list-tile-sub-title>Battery Level: {{item.batteryLevel}}%</v-list-tile-sub-title>
+            <v-list-tile-sub-title>Last Reported: {{item.dateTime}}</v-list-tile-sub-title>
           </v-list-tile-content>
         </v-list-tile>
       </v-list>
@@ -19,28 +19,31 @@
     </v-navigation-drawer>
     <v-toolbar app fixed clipped-left>
       <v-toolbar-side-icon @click.stop="drawer = !drawer"></v-toolbar-side-icon>
-      <v-toolbar-title>Device Dashboard</v-toolbar-title>
+      <router-link to="/map">
+        <v-toolbar-title>LoRaWAN Dashboard</v-toolbar-title>
+      </router-link>
       <v-spacer></v-spacer>
       <v-toolbar-items class="hidden-sm-and-down">
-        <v-menu v-if="user" offset-y>
+        <v-menu v-if="user" offset-y z-index=1000>
           <v-btn slot="activator" flat><v-icon medium class="mr-1">person</v-icon>My Account</v-btn>
           <v-list>
             <v-list-tile @click="$router.push('/createGroup')">
               <v-list-tile-title>Create a Group</v-list-tile-title>
             </v-list-tile>
             <v-list-tile @click="$router.push('/registerdevice')">
-              <v-list-tile-title>Create a device</v-list-tile-title>
+              <v-list-tile-title>Create a Device</v-list-tile-title>
             </v-list-tile>
             <v-list-tile v-if="user.admin == true" @click="$router.push('/register')">
-              <v-list-tile-title>Add a user</v-list-tile-title>
+              <v-list-tile-title>Add a User</v-list-tile-title>
             </v-list-tile>
             <v-list-tile @click="$router.push('/deleteDevice')">
-              <v-list-tile-title>Delete a device</v-list-tile-title>
+              <v-list-tile-title>Delete a Device</v-list-tile-title>
             </v-list-tile>
             <v-list-tile @click="handleLogout()">
               <v-list-tile-title>Logout</v-list-tile-title>
             </v-list-tile>
           </v-list>
+
         </v-menu>
       </v-toolbar-items>
     </v-toolbar>
@@ -69,8 +72,8 @@
             }
         },
         methods: {
-            handleRoute(where) {
-                alert('handleRoute' + where)
+            handleRoute(id) {
+                this.$router.push(`/deviceStatus/${id}`)
             },
             fetchUser() {
                 axios.get('/rest/user/self').then(response => {

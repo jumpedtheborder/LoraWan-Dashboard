@@ -32,9 +32,6 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                 .antMatchers("/h2-console/**").permitAll()
                 .antMatchers(HttpMethod.POST, "/rest/login").permitAll()
                 .antMatchers(HttpMethod.POST, "/rest/user").permitAll()
-                .antMatchers(HttpMethod.GET, "/rest/user/self").permitAll()
-                .antMatchers(HttpMethod.GET, "/rest/book/*").permitAll()
-                .antMatchers("/index.html", "/").permitAll()
                 .antMatchers("/webhook").permitAll()
                 .anyRequest().authenticated()
                 .and()
@@ -49,11 +46,6 @@ public class WebSecurityConfig extends WebSecurityConfigurerAdapter {
                         UsernamePasswordAuthenticationFilter.class)
                 // And filter other requests to check the presence of JWT in header
                 .addFilterBefore(new JwtAuthenticationFilter(userRepository),
-                        UsernamePasswordAuthenticationFilter.class);
-    }
-
-    @Override
-    protected void configure(AuthenticationManagerBuilder auth) throws Exception {
-        auth.userDetailsService(new JwtUserDetailsService(userRepository)).passwordEncoder(new UserPasswordEncoder());
+                        UsernamePasswordAuthenticationFilter.class);;
     }
 }

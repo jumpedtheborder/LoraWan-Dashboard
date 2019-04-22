@@ -10,7 +10,7 @@
                 <div><b>Device Region: </b>{{status.region}}</div>
                 <div><b>Device Group: </b>{{status.group}}</div>
                 <div><b>Order value from left to right: </b>{{status.groupOrder}}</div>
-                <div><b>Device Battery Level (last reported): </b>{{status.batteryLevel}}</div>
+                <div><b>Device Voltage (last reported): </b>{{status.batteryLevel}}</div>
                 <br>
             </div>
 
